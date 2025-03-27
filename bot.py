@@ -55,7 +55,7 @@ def button_handler(update: Update, context: CallbackContext) -> None:
 
 # Main function
 def main():
-    updater = Updater("7782893047:AAHszTxJ4IE7lkidNBpVA3xI0hYDOv_ed4A")
+    updater = Updater("7840330195:AAGrqH2CBndzHIChGRa3WtSyEy7Bj-aJZOI")
     dp = updater.dispatcher
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CallbackQueryHandler(button_handler))
