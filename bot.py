@@ -1,97 +1,90 @@
 import logging
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
+import pytz
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import (
+    ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
+)
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-# Enable logging
-logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
+# **Replace this with your actual bot token**
+BOT_TOKEN = "YOUR_BOT_TOKEN_HERE"
 
-# Bot Token (Replace with your actual token)
-BOT_TOKEN = "7782893047:AAHszTxJ4IE7lkidNBpVA3xI0hYDOv_ed4A"
+# Set up logging
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+)
 
-# Cadets Data
+# Timezone configuration
+timezone = pytz.utc  # Change to your preferred timezone if needed
+scheduler = AsyncIOScheduler(timezone=timezone)
+
+# **Cadet Details**
 CADETS = {
-    "Mikasa Ackerman": "ᴇʟɪᴛᴇ sᴄᴏᴜᴛ, ᴇxᴄᴇᴘᴛɪᴏɴᴀʟ sᴋɪʟʟs, ᴅᴇᴅɪᴄᴀᴛᴇᴅ ᴛᴏ ᴘʀᴏᴛᴇᴄᴛɪɴɢ ᴇʀᴇɴ.",
-    "Armin Arlert": "ʙʀɪʟʟɪᴀɴᴛ ᴛᴀᴄᴛɪᴄɪᴀɴ, ᴜsᴇs ɪɴᴛᴇʟʟɪɢᴇɴᴄᴇ ᴏᴠᴇʀ sᴛʀᴇɴɢᴛʜ.",
-    "Jean Kirstein": "ʀᴇᴀʟɪsᴛɪᴄ ʟᴇᴀᴅᴇʀ, ᴛʜʀɪᴠᴇs ᴜɴᴅᴇʀ ᴘʀᴇssᴜʀᴇ.",
-    "Connie Springer": "ʟᴏʏᴀʟ ᴀɴᴅ ᴅᴇᴅɪᴄᴀᴛᴇᴅ, ʀᴇᴍᴀɪɴs ᴏᴘᴛɪᴍɪsᴛɪᴄ.",
-    "Sasha Blouse": "ᴇxᴄᴇʟʟᴇɴᴛ ᴍᴀʀᴋsᴍᴀɴ, ᴄᴏᴜʀᴀɢᴇᴏᴜs ᴀɴᴅ ᴄᴀʀᴇғʀᴇᴇ.",
-    "Levi Ackerman": "ʜɪsᴛᴏʀʏ's sᴛʀᴏɴɢᴇsᴛ sᴄᴏᴜᴛ, ᴜɴʀɪᴠᴀʟᴇᴅ ɪɴ ᴄᴏᴍʙᴀᴛ."
+    "eren": "🔹 ᴇʀᴇɴ ʏᴇᴀɢᴇʀ 🔹\n\n- ᴛʜᴇ ᴄᴏʀᴇ ғɪɢʜᴛᴇʀ ᴏғ ʜᴜᴍᴀɴɪᴛʏ.\n- ʜᴇ ʙᴇᴄᴀᴍᴇ ᴀ ᴛɪᴛᴀɴ ᴀɴᴅ ғᴏᴜɢʜᴛ ғᴏʀ ғʀᴇᴇᴅᴏᴍ.",
+    "mikasa": "🔹 ᴍɪᴋᴀsᴀ ᴀᴄᴋᴇʀᴍᴀɴ 🔹\n\n- ᴛʜᴇ sᴛʀᴏɴɢᴇsᴛ sᴄᴏᴜᴛ.\n- ᴀʟᴡᴀʏs ᴘʀᴏᴛᴇᴄᴛɪɴɢ ᴇʀᴇɴ.",
+    "armin": "🔹 ᴀʀᴍɪɴ ᴀʀʟᴇʀᴛ 🔹\n\n- ᴀ ɢᴇɴɪᴜs sᴛʀᴀᴛᴇɢɪsᴛ.\n- ᴜsᴇᴅ ʜɪs ɪɴᴛᴇʟʟᴇᴄᴛ ᴛᴏ sᴀᴠᴇ ᴍᴀɴʏ ʟɪᴠᴇs.",
+    "levi": "🔹 ʟᴇᴠɪ ᴀᴄᴋᴇʀᴍᴀɴ 🔹\n\n- ᴛʜᴇ sᴛʀᴏɴɢᴇsᴛ ᴄᴀᴘᴛᴀɪɴ.\n- ʜɪs ᴛɪᴛᴀɴ-ᴋɪʟʟɪɴɢ sᴋɪʟʟs ᴀʀᴇ ᴜɴᴍᴀᴛᴄʜᴇᴅ.",
+    "hange": "🔹 ʜᴀɴɢᴇ ᴢᴏᴇ 🔹\n\n- ᴛʜᴇ ɪɴᴛᴇʟʟɪɢᴇɴᴛ ʀᴇsᴇᴀʀᴄʜᴇʀ.\n- ᴅᴇᴠᴏᴛᴇᴅ ᴛᴏ ᴜɴᴅᴇʀsᴛᴀɴᴅɪɴɢ ᴛɪᴛᴀɴs.",
+    "jean": "🔹 ᴊᴇᴀɴ ᴋɪʀsᴛᴇɪɴ 🔹\n\n- ʙᴇᴄᴀᴍᴇ ᴀ ʟᴇᴀᴅᴇʀ.\n- ғɪɢʜᴛs ғᴏʀ ᴡʜᴀᴛ ɪs ʀɪɢʜᴛ."
 }
 
-# Start Command
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+# **Start Command**
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("ᴠɪᴇᴡ ᴏᴜʀ ᴄᴀᴅᴇᴛs", callback_data="view_cadets")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-
-    await update.message.reply_text(
-        "⚔️ ᴛʜᴇ sᴄᴏᴜᴛ ʀᴇɢɪᴍᴇɴᴛ ⚔️\n\n"
-        "ʀᴇᴠᴏʟᴜᴛɪᴏɴ ʙʀᴏᴜɢʜᴛ ʙʏ ᴛʜᴏsᴇ ᴡʜᴏ ᴅᴀʀᴇ ᴛᴏ ғɪɢʜᴛ.\n\n"
-        "ᴊᴏɪɴ ᴏᴜʀ ᴄᴀᴅᴇᴛs ɪɴ ᴛʜᴇ ʙᴀᴛᴛʟᴇ ғᴏʀ ʜᴜᴍᴀɴɪᴛʏ!",
-        reply_markup=reply_markup
-    )
-
-# View Cadets
-async def view_cadets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    await query.answer()
-
-    buttons = []
-    cadet_names = list(CADETS.keys())
-
-    for i in range(0, len(cadet_names), 2):  # 2x3 Grid Layout
-        row = [InlineKeyboardButton(cadet_names[i], callback_data=f"cadet_{cadet_names[i]}")]
-        if i + 1 < len(cadet_names):
-            row.append(InlineKeyboardButton(cadet_names[i + 1], callback_data=f"cadet_{cadet_names[i + 1]}"))
-        buttons.append(row)
-
-    buttons.append([InlineKeyboardButton("🔙 ʙᴀᴄᴋ ᴛᴏ ᴍᴀɪɴ ᴍᴇɴᴜ", callback_data="back_to_main")])
-
-    reply_markup = InlineKeyboardMarkup(buttons)
-    await query.edit_message_text("🔹 **Sᴄᴏᴜᴛ Rᴇɢɪᴍᴇɴᴛ Cᴀᴅᴇᴛs** 🔹", reply_markup=reply_markup)
-
-# Cadet Details
-async def cadet_details(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    await query.answer()
-
-    cadet_name = query.data.replace("cadet_", "")
-    info = CADETS.get(cadet_name, "Nᴏ ɪɴғᴏʀᴍᴀᴛɪᴏɴ ᴀᴠᴀɪʟᴀʙʟᴇ.")
-
-    buttons = [
-        [InlineKeyboardButton("🔙 ʙᴀᴄᴋ ᴛᴏ ᴄᴀᴅᴇᴛs", callback_data="view_cadets")]
-    ]
-
-    reply_markup = InlineKeyboardMarkup(buttons)
-    await query.edit_message_text(f"**{cadet_name}**\n\n{info}", reply_markup=reply_markup)
-
-# Back to Main Menu
-async def back_to_main(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    await query.answer()
-
-    keyboard = [
-        [InlineKeyboardButton("ᴠɪᴇᴡ ᴏᴜʀ ᴄᴀᴅᴇᴛs", callback_data="view_cadets")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    await query.edit_message_text(
-        "⚔️ ᴛʜᴇ sᴄᴏᴜᴛ ʀᴇɢɪᴍᴇɴᴛ ⚔️\n\n"
-        "ʀᴇᴠᴏʟᴜᴛɪᴏɴ ʙʀᴏᴜɢʜᴛ ʙʏ ᴛʜᴏsᴇ ᴡʜᴏ ᴅᴀʀᴇ ᴛᴏ ғɪɢʜᴛ.\n\n"
-        "ᴊᴏɪɴ ᴏᴜʀ ᴄᴀᴅᴇᴛs ɪɴ ᴛʜᴇ ʙᴀᴛᴛʟᴇ ғᴏʀ ʜᴜᴍᴀɴɪᴛʏ!",
-        reply_markup=reply_markup
-    )
-
-# Main Function
-def main():
-    app = Application.builder().token(BOT_TOKEN).build()
     
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CallbackQueryHandler(view_cadets, pattern="view_cadets"))
-    app.add_handler(CallbackQueryHandler(cadet_details, pattern="cadet_"))
-    app.add_handler(CallbackQueryHandler(back_to_main, pattern="back_to_main"))
+    await update.message.reply_text(
+        "🏅 ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ ᴛʜᴇ sᴄᴏᴜᴛ ʀᴇɢɪᴍᴇɴᴛ!\n\n"
+        "ᴄʜᴏᴏsᴇ ᴀɴ ᴏᴘᴛɪᴏɴ ʙᴇʟᴏᴡ:",
+        reply_markup=reply_markup
+    )
 
+# **Handle Inline Button Clicks**
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    if query.data == "view_cadets":
+        keyboard = [
+            [InlineKeyboardButton("ᴇʀᴇɴ ʏᴇᴀɢᴇʀ", callback_data="eren"),
+             InlineKeyboardButton("ᴍɪᴋᴀsᴀ ᴀᴄᴋᴇʀᴍᴀɴ", callback_data="mikasa")],
+            [InlineKeyboardButton("ᴀʀᴍɪɴ ᴀʀʟᴇʀᴛ", callback_data="armin"),
+             InlineKeyboardButton("ʟᴇᴠɪ ᴀᴄᴋᴇʀᴍᴀɴ", callback_data="levi")],
+            [InlineKeyboardButton("ʜᴀɴɢᴇ ᴢᴏᴇ", callback_data="hange"),
+             InlineKeyboardButton("ᴊᴇᴀɴ ᴋɪʀsᴛᴇɪɴ", callback_data="jean")],
+            [InlineKeyboardButton("⬅ ʙᴀᴄᴋ", callback_data="back_home")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(
+            "🔹 ᴏᴜʀ ᴄᴀᴅᴇᴛs 🔹\n\n"
+            "ᴄʜᴏᴏsᴇ ᴀ ᴄᴀᴅᴇᴛ ᴛᴏ ᴠɪᴇᴡ ᴛʜᴇɪʀ ᴄᴏɴᴛʀɪʙᴜᴛɪᴏɴs:",
+            reply_markup=reply_markup
+        )
+
+    elif query.data in CADETS:
+        keyboard = [[InlineKeyboardButton("⬅ ʙᴀᴄᴋ", callback_data="view_cadets")]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        await query.edit_message_text(
+            CADETS[query.data],
+            reply_markup=reply_markup
+        )
+
+    elif query.data == "back_home":
+        await start(update, context)
+
+# **Main Function**
+def main():
+    app = ApplicationBuilder().token(BOT_TOKEN).post_init(lambda _: scheduler.start()).build()
+
+    # Add Handlers
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CallbackQueryHandler(button_handler))
+
+    # Run Bot
     app.run_polling()
 
 if __name__ == "__main__":
