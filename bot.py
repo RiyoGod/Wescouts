@@ -61,8 +61,10 @@ def generate_keyboard(page):
 # Start command handler
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = generate_keyboard(0)
-    await update.message.reply_text("📜 **Scout Regiment Cadets**:
-Choose a cadet to view details.", reply_markup=keyboard)
+    await update.message.reply_text(
+        "📜 **Scout Regiment Cadets**:\nChoose a cadet to view details.", 
+        reply_markup=keyboard
+    )
 
 # Callback handler
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
