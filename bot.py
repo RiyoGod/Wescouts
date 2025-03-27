@@ -1,7 +1,7 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
 
-BOT_TOKEN = "YOUR_BOT_TOKEN_HERE"
+BOT_TOKEN = "7782893047:AAHszTxJ4IE7lkidNBpVA3xI0hYDOv_ed4A"
 
 # Scout Regiment Cadets Data (Name, Description)
 cadets = [
